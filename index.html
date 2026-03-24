@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario Admisión EOI Maspalomas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 font-sans text-slate-900 pb-12">
+
+    <!-- Header -->
+    <header id="app-header" class="text-white shadow-md transition-colors duration-500">
+        <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex items-center gap-3 mb-2">
+                <i data-lucide="calendar" class="w-8 h-8 opacity-90"></i>
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">
+                    EOI Maspalomas
+                </h1>
+            </div>
+            <p class="text-white/80 text-sm md:text-base font-medium ml-11">
+                Calendario de Admisión y Matrícula
+            </p>
+        </div>
+    </header>
+
+    <!-- Navegación (Tabs) -->
+    <div class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-30">
+        <div class="w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div id="app-tabs" class="flex flex-wrap py-2 gap-2">
+                <!-- Pestañas generadas por JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <main id="app-main" class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Contenido generado por JS -->
+    </main>
+
+    <!-- Modal de Evento -->
+    <div id="event-modal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden animate-fadeIn">
+            <div id="modal-header" class="px-6 py-4 flex justify-between items-start">
+                <h3 id="modal-title" class="font-bold text-lg text-white pr-4"></h3>
+                <button onclick="closeModal()" class="text-white/80 hover:text-white transition-colors flex-shrink-0">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-5">
+                <div class="flex items-start gap-3 text-slate-600">
+                    <i data-lucide="calendar" class="w-5 h-5 text-slate-400 mt-0.5"></i>
+                    <div>
+                        <p class="text-xs uppercase font-semibold text-slate-400">Fecha / Plazo</p>
+                        <p id="modal-dates" class="font-medium text-slate-800"></p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3 text-slate-600">
+                    <i data-lucide="tag" class="w-5 h-5 text-slate-400 mt-0.5"></i>
+                    <div>
+                        <p class="text-xs uppercase font-semibold text-slate-400">Categoría</p>
+                        <p id="modal-category" class="font-medium text-slate-800"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-4 flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg transition-colors">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN DE CATEGORÍAS Y COLORES ---
+        const CATEGORIES = {
+            GENERAL: { id: 'general', name: 'Vista General', bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-500', solid: 'bg-slate-800', light: 'bg-slate-50' },
+            NUEVO_INGRESO: { id: 'nuevo', name: 'Alumnado de nuevo ingreso', bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-500', solid: 'bg-blue-600', light: 'bg-blue-50' },
+            CONTINUIDAD: { id: 'continuidad', name: 'Alumnado de continuidad', bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-500', solid: 'bg-emerald-600', light: 'bg-emerald-50' },
+            ESPECIALIZACION: { id: 'especializacion', name: 'Cursos especialización', bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-500', solid: 'bg-purple-600', light: 'bg-purple-50' },
+            CLASIFICACION: { id: 'clasificacion', name: 'Pruebas de clasificación', bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-500', solid: 'bg-orange-500', light: 'bg-orange-50' },
+            CERTIFICACION: { id: 'certificacion', name: 'Pruebas de certificación (PCEI)', bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-500', solid: 'bg-red-600', light: 'bg-red-50' },
+            OTRAS: { id: 'otras', name: 'Otras fechas', bg: 'bg-gray-200', text: 'text-gray-800', border: 'border-gray-500', solid: 'bg-gray-600', light: 'bg-gray-50' }
+        };
+
+        // --- DATOS DE LOS EVENTOS ---
+        const EVENTS = [
+            // Nuevo Ingreso
+            { id: 1, title: 'Publicación de plazas vacantes provisionales', start: '2026-04-07', end: '2026-04-07', category: 'nuevo' },
+            { id: 2, title: 'Periodo oficial de solicitud de plazas (preinscripción)', start: '2026-04-08', end: '2026-05-18', category: 'nuevo' },
+            { id: 3, title: 'Listas provisionales de personas admitidas, reserva y excluidas', start: '2026-06-16', end: '2026-06-16', category: 'nuevo' },
+            { id: 4, title: 'Reclamaciones a las listas provisionales', start: '2026-06-17', end: '2026-06-18', category: 'nuevo' },
+            { id: 5, title: 'Publicación de listas definitivas', start: '2026-06-23', end: '2026-06-23', category: 'nuevo' },
+            { id: 6, title: 'Formalización de matrícula (nuevo ingreso)', start: '2026-06-24', end: '2026-07-10', category: 'nuevo' },
+            { id: 7, title: 'Listas de reserva actualizadas y vacantes no cubiertas', start: '2026-07-14', end: '2026-07-14', category: 'nuevo' },
+            { id: 8, title: 'Periodo extraordinario de solicitud de plaza y matrícula', start: '2026-07-15', end: '2026-09-16', category: 'nuevo' },
+
+            // Continuidad
+            { id: 9, title: 'Publicación de calificaciones finales', start: '2026-05-28', end: '2026-05-28', category: 'continuidad' },
+            { id: 10, title: 'Solicitud de matrícula (Pincel Ekade)', start: '2026-06-08', end: '2026-06-19', category: 'continuidad' },
+            { id: 11, title: 'Último día validación definitiva de matrículas', start: '2026-06-22', end: '2026-06-22', category: 'continuidad' },
+
+            // Especializacion
+            { id: 12, title: 'Periodo de solicitud de plaza', start: '2026-05-12', end: '2026-05-26', category: 'especializacion' },
+            { id: 13, title: 'Publicación listas provisionales', start: '2026-05-29', end: '2026-05-29', category: 'especializacion' },
+            { id: 14, title: 'Reclamación a listas provisionales', start: '2026-06-01', end: '2026-06-02', category: 'especializacion' },
+            { id: 15, title: 'Publicación listas definitivas y calendario de matrícula', start: '2026-06-04', end: '2026-06-04', category: 'especializacion' },
+            { id: 16, title: 'Formalización de matrícula', start: '2026-06-08', end: '2026-06-19', category: 'especializacion' },
+            { id: 17, title: 'Periodo extraordinario de solicitud y matrícula', start: '2026-06-22', end: '2026-09-16', category: 'especializacion' },
+
+            // Clasificacion
+            { id: 18, title: 'Listas provisionales de solicitantes', start: '2026-05-20', end: '2026-05-20', category: 'clasificacion' },
+            { id: 19, title: 'Reclamación a listas provisionales', start: '2026-05-21', end: '2026-05-22', category: 'clasificacion' },
+            { id: 20, title: 'Listas definitivas (límite solicitud prueba presencial)', start: '2026-05-26', end: '2026-05-26', category: 'clasificacion' },
+            { id: 21, title: 'Matrícula en aulas virtuales (Moodle)', start: '2026-05-26', end: '2026-05-29', category: 'clasificacion' },
+            { id: 22, title: 'Prueba escrita (en línea)', start: '2026-06-02', end: '2026-06-02', category: 'clasificacion' },
+            { id: 23, title: 'Prueba oral (presencial)', start: '2026-06-02', end: '2026-06-05', category: 'clasificacion' },
+            { id: 24, title: 'Introducción de nivel y publicación de resultados', start: '2026-06-05', end: '2026-06-08', category: 'clasificacion' },
+
+            // Certificacion
+            { id: 25, title: 'Listado definitivo inscritos B1/B2/C1/C2 y horario orales', start: '2026-05-25', end: '2026-05-25', category: 'certificacion' },
+            { id: 26, title: 'Matrícula PCEI alumnado A2', start: '2026-05-27', end: '2026-06-01', category: 'certificacion' },
+            { id: 27, title: 'Pruebas escritas ord. (Varios niveles)', start: '2026-05-29', end: '2026-05-29', category: 'certificacion' },
+            { id: 28, title: 'Pruebas escritas ord. (Varios niveles)', start: '2026-06-01', end: '2026-06-01', category: 'certificacion' },
+            { id: 29, title: 'Listado provisional inscritos PCEI A2', start: '2026-06-02', end: '2026-06-02', category: 'certificacion' },
+            { id: 30, title: 'Pruebas escritas ord. (Varios niveles)', start: '2026-06-08', end: '2026-06-09', category: 'certificacion' },
+            { id: 31, title: 'Publicación de calificaciones (conv. ordinaria)', start: '2026-06-19', end: '2026-06-19', category: 'certificacion' },
+            { id: 32, title: 'Reclamaciones y solicitud de conv. extraordinaria', start: '2026-06-22', end: '2026-06-24', category: 'certificacion' },
+            { id: 33, title: 'Resolución reclamaciones y admitidos extra. (y orales)', start: '2026-06-26', end: '2026-06-26', category: 'certificacion' },
+            { id: 34, title: 'Pruebas escritas (conv. extraordinaria)', start: '2026-09-01', end: '2026-09-04', category: 'certificacion' },
+            { id: 35, title: 'Publicación calificaciones (extraordinaria)', start: '2026-09-11', end: '2026-09-11', category: 'certificacion' },
+            { id: 36, title: 'Reclamaciones (extraordinaria)', start: '2026-09-14', end: '2026-09-17', category: 'certificacion' },
+
+            // Otras fechas
+            { id: 37, title: 'Trámites y gestiones internas de la EOI', start: '2026-03-25', end: '2026-03-27', category: 'otras' },
+            { id: 38, title: 'Apertura del curso escolar 2026-2027 en Pincel Ekade', start: '2026-05-11', end: '2026-05-11', category: 'otras' },
+            { id: 39, title: 'Límite validación solicitudes de plaza (Centro)', start: '2026-05-19', end: '2026-05-19', category: 'otras' },
+            { id: 40, title: 'Cierre evaluaciones, revisión vacantes, publicación horarios', start: '2026-06-05', end: '2026-06-05', category: 'otras' },
+            { id: 41, title: 'Límite introducción definitiva matrícula para autorización', start: '2026-09-16', end: '2026-09-16', category: 'otras' }
+        ];
+
+        // --- ESTADO DE LA APLICACIÓN ---
+        let activeTab = 'general';
+        let currentDate = new Date();
+        let hiddenCategories = new Set(); // Para llevar el registro de filtros apagados
+        
+        // Funciones Auxiliares
+        const getTodayString = () => {
+            const today = new Date();
+            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        };
+        const todayStr = getTodayString();
+
+        const formatDate = (dateStr) => {
+            const [year, month, day] = dateStr.split('-');
+            const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+            return `${parseInt(day, 10)} de ${months[parseInt(month, 10) - 1]}`;
+        };
+
+        const formatEventDates = (start, end) => {
+            if (start === end) return formatDate(start);
+            const sMonth = start.split('-')[1];
+            const eMonth = end.split('-')[1];
+            if (sMonth === eMonth) {
+                return `Del ${parseInt(start.split('-')[2], 10)} al ${formatDate(end)}`;
+            }
+            return `Del ${formatDate(start)} al ${formatDate(end)}`;
+        };
+
+        // --- FUNCIONES DE NAVEGACIÓN ---
+        window.changeTab = (tabId) => {
+            activeTab = tabId;
+            currentDate = new Date(); // Resetear al mes actual
+            hiddenCategories.clear(); // Limpiar filtros al cambiar de pestaña
+            render();
+        };
+
+        window.toggleCategoryFilter = (catId) => {
+            if (hiddenCategories.has(catId)) {
+                hiddenCategories.delete(catId);
+            } else {
+                hiddenCategories.add(catId);
+            }
+            renderMain();
+        };
+
+        window.prevMonth = () => {
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+            renderMain();
+        };
+
+        window.nextMonth = () => {
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+            renderMain();
+        };
+
+        window.openModal = (eventId, e) => {
+            if (e) e.stopPropagation();
+            const evt = EVENTS.find(ev => ev.id === eventId);
+            if (!evt) return;
+
+            const cat = Object.values(CATEGORIES).find(c => c.id === evt.category) || CATEGORIES.OTRAS;
+            
+            document.getElementById('modal-title').innerText = evt.title;
+            document.getElementById('modal-dates').innerText = formatEventDates(evt.start, evt.end);
+            document.getElementById('modal-category').innerText = cat.name;
+
+            const header = document.getElementById('modal-header');
+            // Elimina clases de color previas y asigna la de la categoría actual
+            header.className = `px-6 py-4 flex justify-between items-start ${cat.solid}`;
+
+            const modal = document.getElementById('event-modal');
+            modal.classList.remove('hidden');
+        };
+
+        window.closeModal = () => {
+            document.getElementById('event-modal').classList.add('hidden');
+        };
+
+        window.goToEventInCalendar = (eventId) => {
+            const evt = EVENTS.find(ev => ev.id === eventId);
+            if (!evt) return;
+
+            // Cambiar mes del calendario al inicio del evento
+            const [year, month] = evt.start.split('-');
+            currentDate = new Date(year, parseInt(month) - 1, 1);
+            
+            // Re-renderizar la vista para actualizar el calendario
+            renderMain();
+
+            // Desplazar suavemente hasta el calendario
+            const calendarEl = document.getElementById('calendar-container');
+            if (calendarEl) {
+                // Hacemos scroll con un ligero margen superior
+                const y = calendarEl.getBoundingClientRect().top + window.scrollY - 100;
+                window.scrollTo({top: y, behavior: 'smooth'});
+                
+                // Abrimos el modal un instante después del scroll para que sea visualmente agradable
+                setTimeout(() => openModal(evt.id), 400); 
+            }
+        };
+
+        // --- RENDERIZADORES ---
+
+        function renderHeader() {
+            const currentTheme = Object.values(CATEGORIES).find(c => c.id === activeTab);
+            const headerEl = document.getElementById('app-header');
+            // Eliminar clases anteriores de 'bg-*' que representan solid colors
+            Object.values(CATEGORIES).forEach(c => headerEl.classList.remove(c.solid));
+            headerEl.classList.add(currentTheme.solid);
+        }
+
+        function renderTabs() {
+            const tabsEl = document.getElementById('app-tabs');
+            tabsEl.innerHTML = Object.values(CATEGORIES).map(cat => {
+                const isActive = activeTab === cat.id;
+                const activeClasses = isActive 
+                    ? `${cat.solid} text-white border-transparent shadow-md` 
+                    : `bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50`;
+                
+                return `
+                    <button
+                        onclick="changeTab('${cat.id}')"
+                        class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 border-2 ${activeClasses}"
+                    >
+                        ${cat.name}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderCalendarHTML(filteredEvents) {
+            const currentYear = currentDate.getFullYear();
+            const currentMonth = currentDate.getMonth();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            let firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
+            firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // Lunes=0, Dom=6
+
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+            let daysHTML = '';
+
+            // Pre-calcular posiciones verticales (slots) para alineación continua
+            const activeEvents = filteredEvents.map(e => ({...e}));
+            // Ordenar por fecha de inicio y luego por duración (los más largos primero)
+            activeEvents.sort((a, b) => {
+                if (a.start !== b.start) return a.start.localeCompare(b.start);
+                return b.end.localeCompare(a.end); // Descendente
+            });
+
+            const slotOccupancy = [];
+            const eventSlots = {};
+
+            activeEvents.forEach(evt => {
+                let slot = 0;
+                while (true) {
+                    if (!slotOccupancy[slot]) slotOccupancy[slot] = [];
+                    // Verificar si se superpone con algún evento existente en este slot
+                    const overlaps = slotOccupancy[slot].some(existingEvt => {
+                        return (evt.start <= existingEvt.end && evt.end >= existingEvt.start);
+                    });
+                    if (!overlaps) {
+                        slotOccupancy[slot].push(evt);
+                        eventSlots[evt.id] = slot;
+                        break;
+                    }
+                    slot++;
+                }
+            });
+
+            // Celdas vacías
+            for (let i = 0; i < firstDayOfWeek; i++) {
+                daysHTML += `<div class="min-h-[100px] border border-gray-100 bg-gray-50/50 p-1"></div>`;
+            }
+
+            // Días del mes
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
+                
+                const dayEvents = activeEvents.filter(e => dateStr >= e.start && dateStr <= e.end);
+                
+                let maxSlot = -1;
+                dayEvents.forEach(e => {
+                    if (eventSlots[e.id] > maxSlot) maxSlot = eventSlots[e.id];
+                });
+
+                let eventsHTML = '';
+                
+                for (let slot = 0; slot <= maxSlot; slot++) {
+                    const evt = dayEvents.find(e => eventSlots[e.id] === slot);
+                    
+                    if (evt) {
+                        const catData = Object.values(CATEGORIES).find(c => c.id === evt.category) || CATEGORIES.OTRAS;
+                        const isMultiDay = evt.start !== evt.end;
+                        const isStart = dateStr === evt.start;
+                        const isEnd = dateStr === evt.end;
+                        
+                        let classes = "h-[22px] leading-[22px] text-[10px] sm:text-xs font-medium truncate mb-1 transition-opacity cursor-pointer hover:opacity-80 ";
+                        
+                        // Lógica para mostrar el texto (para evitar repetir el texto todos los días del evento continuo)
+                        const d = new Date(currentYear, currentMonth, day);
+                        const isMonday = d.getDay() === 1;
+                        const isFirstOfMonth = day === 1;
+                        const showText = isStart || isMonday || isFirstOfMonth || !isMultiDay;
+                        const displayText = showText ? evt.title : '&nbsp;';
+
+                        if (isMultiDay) {
+                            classes += `${catData.bg} ${catData.text} `;
+                            
+                            // Borde izquierdo
+                            if (isStart) {
+                                classes += `ml-0 pl-1.5 rounded-l border-l-2 ${catData.border} `;
+                            } else {
+                                // -ml-1 para superponerse con el padding y conectar visualmente
+                                classes += `-ml-1 pl-2.5 rounded-l-none border-l-0 `;
+                            }
+                            
+                            // Borde derecho
+                            if (isEnd) {
+                                classes += `mr-0 pr-1.5 rounded-r border-r-2 ${catData.border} `;
+                            } else {
+                                // -mr-1 para extenderse hasta el final de la celda
+                                classes += `-mr-1 pr-2.5 rounded-r-none border-r-0 `;
+                            }
+                        } else {
+                            // Evento de un solo día
+                            classes += `mx-0 px-1.5 rounded border-l-2 ${catData.border} ${catData.bg} ${catData.text} `;
+                        }
+
+                        eventsHTML += `
+                            <div 
+                                onclick="openModal(${evt.id}, event)"
+                                title="${evt.title}"
+                                class="${classes}"
+                            >
+                                ${displayText}
+                            </div>
+                        `;
+                    } else {
+                        // Hueco vacío para mantener la alineación horizontal del slot
+                        eventsHTML += `<div class="h-[22px] mb-1"></div>`;
+                    }
+                }
+
+                daysHTML += `
+                    <div class="min-h-[100px] border border-gray-200 p-1 flex flex-col transition-colors ${isToday ? 'bg-blue-50' : 'bg-white hover:bg-slate-50'}">
+                        <div class="flex justify-between items-center mb-1 px-1">
+                            <span class="text-sm font-semibold ${isToday ? 'text-blue-600' : 'text-gray-700'}">${day}</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                            ${eventsHTML}
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div id="calendar-container" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6 scroll-mt-24">
+                    <div class="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
+                        <button onclick="prevMonth()" class="p-2 hover:bg-slate-200 rounded-full transition"><i data-lucide="chevron-left" class="w-5 h-5 text-slate-600"></i></button>
+                        <h3 class="text-lg font-bold text-slate-800 capitalize">
+                            ${monthNames[currentMonth]} ${currentYear}
+                        </h3>
+                        <button onclick="nextMonth()" class="p-2 hover:bg-slate-200 rounded-full transition"><i data-lucide="chevron-right" class="w-5 h-5 text-slate-600"></i></button>
+                    </div>
+                    <div class="grid grid-cols-7 text-center border-b border-slate-200 bg-slate-100">
+                        ${['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => `<div class="py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">${d}</div>`).join('')}
+                    </div>
+                    <div class="grid grid-cols-7">
+                        ${daysHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderGeneralDashboard() {
+            // Filtrar eventos según las categorías ocultas seleccionadas
+            const visibleEvents = EVENTS.filter(e => !hiddenCategories.has(e.category));
+
+            const todaysEvents = visibleEvents.filter(e => todayStr >= e.start && todayStr <= e.end);
+            const upcomingEvents = visibleEvents
+                .filter(e => e.end >= todayStr && !(e.start <= todayStr && e.end >= todayStr))
+                .sort((a, b) => a.start.localeCompare(b.start))
+                .slice(0, 5);
+
+            let todayHTML = todaysEvents.length > 0 ? `
+                <ul class="space-y-3 relative z-10">
+                    ${todaysEvents.map(evt => {
+                        const cat = Object.values(CATEGORIES).find(c => c.id === evt.category);
+                        return `
+                            <li onclick="goToEventInCalendar(${evt.id})" class="cursor-pointer hover:shadow-md transition-all p-3 rounded-lg border ${cat.bg} ${cat.border} flex flex-col gap-1">
+                                <span class="text-xs font-bold uppercase tracking-wide ${cat.text}">${cat.name}</span>
+                                <span class="text-slate-800 text-sm font-medium">${evt.title}</span>
+                            </li>
+                        `;
+                    }).join('')}
+                </ul>
+            ` : `
+                <div class="flex items-center gap-2 text-slate-500 p-3 bg-slate-50 rounded-lg">
+                    <i data-lucide="check-circle-2" class="w-[18px] h-[18px]"></i>
+                    <span>No hay eventos programados para el día de hoy.</span>
+                </div>
+            `;
+
+            let upcomingHTML = upcomingEvents.map(evt => {
+                const cat = Object.values(CATEGORIES).find(c => c.id === evt.category);
+                return `
+                    <li onclick="goToEventInCalendar(${evt.id})" class="cursor-pointer hover:bg-slate-100 flex gap-3 items-start p-2 rounded-lg transition-colors border-b border-slate-100 last:border-0">
+                        <div class="mt-1 w-2 h-2 rounded-full flex-shrink-0 ${cat.solid}"></div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-slate-800">${evt.title}</p>
+                            <p class="text-xs text-slate-500 flex justify-between">
+                                <span>${cat.name}</span>
+                                <span class="font-semibold text-slate-700">${formatEventDates(evt.start, evt.end)}</span>
+                            </p>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+
+            // Renderizar la leyenda dinámica
+            let legendHTML = Object.values(CATEGORIES)
+                .filter(c => c.id !== 'general')
+                .map(cat => {
+                    const isActive = !hiddenCategories.has(cat.id);
+                    const btnClasses = isActive 
+                        ? `${cat.bg} ${cat.text} ${cat.border} hover:opacity-80` 
+                        : `bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200`;
+                    const dotClasses = isActive ? cat.solid : `bg-slate-300`;
+                    
+                    return `
+                        <button onclick="toggleCategoryFilter('${cat.id}')" class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all ${btnClasses}">
+                            <div class="w-2 h-2 rounded-full ${dotClasses} transition-colors"></div>
+                            ${cat.name}
+                        </button>
+                    `;
+                }).join('');
+
+            return `
+                <div class="space-y-6 animate-fadeIn">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Panel Hoy -->
+                        <div class="bg-white border border-blue-100 rounded-2xl shadow-sm p-5 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-4 opacity-10">
+                                <i data-lucide="clock" class="w-20 h-20 text-blue-500"></i>
+                            </div>
+                            <div class="flex items-center gap-2 text-blue-600 mb-4">
+                                <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                                <h2 class="text-lg font-bold">Hoy (${formatDate(todayStr)})</h2>
+                            </div>
+                            ${todayHTML}
+                        </div>
+
+                        <!-- Panel Próximos Eventos -->
+                        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                            <div class="flex items-center gap-2 text-slate-800 mb-4">
+                                <i data-lucide="alert-circle" class="w-5 h-5"></i>
+                                <h2 class="text-lg font-bold">Próximos 5 Eventos</h2>
+                            </div>
+                            <ul class="space-y-3">
+                                ${upcomingHTML}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <h2 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <i data-lucide="calendar" class="w-6 h-6"></i> Calendario General
+                        </h2>
+                        <p class="text-sm text-slate-600 mb-4">Haz clic en las etiquetas para filtrar y visualizar los eventos de forma selectiva.</p>
+                        
+                        <!-- Leyenda interactiva -->
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${legendHTML}
+                        </div>
+
+                        ${renderCalendarHTML(visibleEvents)}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCategoryDashboard() {
+            const activeCatData = Object.values(CATEGORIES).find(c => c.id === activeTab);
+            const filteredEvents = EVENTS.filter(e => e.category === activeTab);
+
+            let rowsHTML = filteredEvents.map(evt => `
+                <tr onclick="goToEventInCalendar(${evt.id})" class="cursor-pointer hover:bg-slate-100 transition-colors">
+                    <td class="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
+                        ${formatEventDates(evt.start, evt.end)}
+                    </td>
+                    <td class="px-4 py-3 text-slate-600">
+                        ${evt.title}
+                    </td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="animate-fadeIn">
+                    <div class="${activeCatData.light} border ${activeCatData.border} rounded-2xl p-6 mb-8">
+                        <h2 class="text-2xl font-bold ${activeCatData.text} mb-2 flex items-center gap-2">
+                            <i data-lucide="info" class="w-6 h-6"></i> ${activeCatData.name}
+                        </h2>
+                        <p class="text-slate-600 mb-6 text-sm">
+                            Listado completo y calendario exclusivo filtrado para los trámites relacionados con ${activeCatData.name.toLowerCase()}.
+                        </p>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-4 py-3 font-semibold">Fecha / Plazo</th>
+                                        <th class="px-4 py-3 font-semibold">Evento o Trámite</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${rowsHTML}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    ${renderCalendarHTML(filteredEvents)}
+                </div>
+            `;
+        }
+
+        function renderMain() {
+            const mainEl = document.getElementById('app-main');
+            if (activeTab === 'general') {
+                mainEl.innerHTML = renderGeneralDashboard();
+            } else {
+                mainEl.innerHTML = renderCategoryDashboard();
+            }
+            // Necesario para renderizar los iconos de lucide insertados dinámicamente
+            lucide.createIcons();
+        }
+
+        function render() {
+            renderHeader();
+            renderTabs();
+            renderMain();
+        }
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            render();
+            // Renderizamos iconos de la cabecera que no cambian
+            lucide.createIcons();
+
+            // Cerrar modal al hacer clic en el fondo gris exterior
+            const modal = document.getElementById('event-modal');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'event-modal') closeModal();
+                });
+            }
+        });
+
+    </script>
+</body>
+</html>
